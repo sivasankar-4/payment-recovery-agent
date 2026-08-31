@@ -1,118 +1,106 @@
-Adaptive Revenue Recovery Agent
+# Adaptive Revenue Recovery Agent
 
-Track: AI Revenue Recovery — Razorpay Buildathon
+**Track:** AI Revenue Recovery — Razorpay Buildathon
 
-An agent that decides if a failed payment is worth trying to recover, picks a safe way to do it, and knows when to stop.
+An agent that decides if a failed payment is worth trying to recover, picks a safe recovery action, and knows when to stop.
 
-Why we're building this
+## Why we're building this
 
-When a payment fails, most systems do one thing: send another payment link. That's not always right.
+When a payment fails, most systems simply try to send another payment link. That's not always the right thing to do.
 
-Some examples:
+For example:
 
-A UPI timeout on the first try? Worth a retry.
-Card declined twice already, and we've already messaged the customer? Probably not worth bothering them again.
-Customer says "I already paid, please check" — sending another link here is just wrong.
-Customer says "stop messaging me" — we have to stop, no exceptions.
+- A UPI timeout on the first attempt? It may be worth retrying.
+- A payment that has already been attempted twice? Stop rather than retry indefinitely.
+- A customer says "I already paid, please check" — sending another payment link is the wrong response.
+- A customer says "stop messaging me" — recovery should stop immediately.
 
-So the real question we're answering isn't "how do I send a payment reminder." It's: how do we recover failed payments without annoying customers or retrying blindly.
+The real problem isn't just sending payment reminders. It's deciding **when recovery makes sense, what action is safe, and when the system should stop.**
 
-How it works
+---
 
-The agent doesn't just fire one message and move on. It loops:
+## How it works
 
-Look at the payment failure (why did it fail)
-Look at the customer's situation (did they say anything, are they active)
-Check if this is a one-off issue or part of a bigger pattern (e.g. a bank having an outage)
-Decide if trying to recover this is even worth it
-Pick one action from a fixed list
-Run it past some hard safety rules
-Do it, watch what happens, and either stop or try the next step
-Where we use AI, and where we don't
+The recovery agent follows a decision flow:
+
+1. Receive a failed payment event.
+2. Identify why the payment failed.
+3. Look at the customer's recovery context and engagement.
+4. Check whether the failure appears isolated or systemic.
+5. Calculate a recovery score.
+6. Select a recovery action.
+7. Run the recommendation through hard policy rules.
+8. Log the decision and continue or stop based on the result.
+
+### Where we use AI, and where we don't
 
 We're not using AI everywhere, on purpose.
 
-Payment failure codes like UPI_TIMEOUT or CARD_DECLINED are handled with plain old code. There's nothing ambiguous about them, so throwing AI at it would just add cost and risk for no reason.
+Structured payment failure information such as `UPI_TIMEOUT` or `CARD_DECLINED` is handled using normal application logic. The payment system already provides this information, so using AI to interpret it would add unnecessary complexity.
 
-AI comes in when a customer says something in their own words and we need to figure out what they mean. Things like:
+AI is useful when the customer communicates in natural language and the intent needs to be interpreted.
 
-"I already paid this morning, why are you asking again?" → they think they've paid
-"Please stop messaging me" → opt out, immediately
-"I'll pay tomorrow" → they want to be asked later, not now
+For example:
 
-That's genuinely ambiguous input. That's where AI actually helps.
+- `"I already paid this morning, why are you asking again?"` → customer believes the payment was completed
+- `"Please stop messaging me"` → customer wants to opt out
+- `"I'll pay tomorrow"` → customer wants to pay later
 
-AI recommends. It doesn't get to act on its own.
+This is where AI adds value: **understanding ambiguous customer intent.**
 
-This is the part we were most careful about. AI can suggest what to do, but every suggestion has to pass through a rules layer before anything actually happens. If the AI's suggestion breaks a rule, it gets blocked — no exceptions, no override.
+---
 
-The agent can only pick from a short, fixed list of actions:
+## AI recommends. Policy controls.
 
-RETRY
-WAIT
-SEND_PAYMENT_LINK
-OFFER_ALTERNATIVE_METHOD
-PAUSE_AND_ESCALATE
-SCHEDULE_PAYMENT_REMINDER
-STOP
+AI does not directly execute payment recovery actions.
 
-It can't invent something like "give a 20% discount." That's not on the list, so it's not an option — which matters a lot when you're dealing with real money.
+The agent produces a recommendation, but the recommendation must pass through a policy layer before it can be used.
 
-Rules that can't be overridden
+The agent can only choose from a fixed set of actions:
 
-These aren't suggestions, they're hard stops:
+- `RETRY`
+- `WAIT`
+- `SEND_PAYMENT_LINK`
+- `OFFER_ALTERNATIVE_METHOD`
+- `PAUSE_AND_ESCALATE`
+- `SCHEDULE_PAYMENT_REMINDER`
+- `STOP`
 
-If the payment already went through, stop.
-If the customer opted out, stop.
-If we've already tried twice, stop.
-If an action isn't on the allowed list, block it.
-Don't run recovery twice on the same payment at the same time.
-Spotting patterns, not just single failures
+It cannot invent arbitrary actions such as giving a discount or changing a payment amount.
 
-Sometimes a failure isn't really about the customer — it's a bank having issues, or a payment method breaking down for a lot of people at once. If we see a spike of similar failures clustered together (same bank, same method, short time window), we treat that differently. Instead of retrying blindly, we hold off and offer another payment method, because retrying into an outage just wastes everyone's time.
+This keeps the decision space controlled when dealing with real payments.
 
-What's actually in this repo
+---
 
-Frontend — React, TypeScript, Vite, Tailwind. A dashboard for the merchant that shows open cases, a live log of every decision the agent made, and a banner if something looks systemic.
+## Rules that cannot be overridden
 
-Backend — <!-- fill this in, e.g. FastAPI / Node / whatever you're using -->. It exposes two endpoints:
+These are hard safety conditions:
 
-GET /api/payments — the payments, with status, why they failed, amount, customer info
-GET /api/audit-logs — every decision the agent made, and why
+- If the payment has already been captured, stop.
+- If the customer has opted out, stop.
+- If the payment has already been attempted twice, stop.
+- If the recommended action is not in the allowed action list, block it.
+- Prevent duplicate recovery processing for the same payment at the same time.
 
-The frontend checks both endpoints every 5 seconds so the dashboard stays current.
+The policy layer has the final say, regardless of what the AI recommends.
 
-How we score "is this worth recovering"
+---
 
-Not a black box — just a simple weighted score:
+## Detecting systemic failures
 
-score = (past success rate for this kind of failure)
-      − (how many times we've already tried)
-      + (any sign the customer is still engaged, like opening a link)
-      − (how long it's been since the failure)
+Not every payment failure is an individual customer problem.
 
-If the score is too low, we stop trying or just leave a payment link without following up.
+If multiple customers experience failures within a short time window, the system can identify the pattern as a potential systemic failure.
 
-Running this locally
+For example:
 
-Backend
-
-<!-- fill in your actual setup steps and command -->
-
-Frontend
-
-bash
-cd recovery-agent-frontend
-npm install
-npm run dev
-
-The frontend expects the backend running on localhost:8000 with CORS already set up for it.
-
-What we left out on purpose
-Letting AI pick arbitrary actions like discounts — too risky when real money's involved.
-Using AI to classify structured failure codes — the gateway already tells us what happened, no need to guess.
-Unlimited retries — capped at 2, no matter what any recommendation says.
-What we'd add next
-<!-- fill in, e.g. detecting real bank outages from live failure rates, a voice channel, B2B receivables, promise-to-pay tracking -->
-
-Team: <!-- fill in --> Built for Razorpay Buildathon, Track 03 — AI Revenue Recovery
+```text
+Multiple customers fail payments
+            ↓
+Failures occur within a short window
+            ↓
+Systemic pattern detected
+            ↓
+Automatic recovery is paused
+            ↓
+Cases are escalated for investigation
