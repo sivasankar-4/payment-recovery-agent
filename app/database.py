@@ -21,8 +21,22 @@ def create_tables():
           received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           ) """)
 
-    connection.commit()
-    connection.close()
+
+    connection.execute("""
+    CREATE TABLE IF NOT EXISTS audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id TEXT NOT NULL,
+        payment_id TEXT NOT NULL,
+        intent TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        recovery_score REAL NOT NULL,
+        systemic INTEGER NOT NULL,
+        retry_count INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
 
 
 def save_payment_event(event):
@@ -87,3 +101,88 @@ def get_recent_failed_events(minutes=5):
         }
         for row in rows
     ]
+
+def save_audit_log(
+    event_id,
+    payment_id,
+    intent,
+    confidence,
+    recovery_score,
+    systemic,
+    retry_count,
+    action,
+    reason
+):
+    connection = get_connection()
+
+    connection.execute("""
+        INSERT INTO audit_logs (
+            event_id,
+            payment_id,
+            intent,
+            confidence,
+            recovery_score,
+            systemic,
+            retry_count,
+            action,
+            reason
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        event_id,
+        payment_id,
+        intent,
+        confidence,
+        recovery_score,
+        int(systemic),
+        retry_count,
+        action,
+        reason
+    ))
+
+    connection.commit()
+    connection.close()
+
+def get_payment_events():
+    connection = get_connection()
+
+    rows = connection.execute("""
+        SELECT
+            event_id,
+            payment_id,
+            status,
+            failure_reason,
+            amount,
+            customer_name,
+            customer_email,
+            received_at
+        FROM payment_events
+        ORDER BY received_at DESC
+    """).fetchall()
+
+    connection.close()
+
+    return rows
+
+def get_audit_logs():
+    connection = get_connection()
+
+    rows = connection.execute("""
+        SELECT
+            event_id,
+            payment_id,
+            intent,
+            confidence,
+            recovery_score,
+            systemic,
+            retry_count,
+            action,
+            reason,
+            created_at
+        FROM audit_logs
+        ORDER BY created_at DESC
+    """).fetchall()
+
+    connection.close()
+
+    return rows
