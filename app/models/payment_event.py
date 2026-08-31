@@ -12,4 +12,5 @@ class PaymentEvent(BaseModel):
     failure_reason : str
     amount : float
     customer : Customer
+    customer_message : str
 
