@@ -104,3 +104,155 @@ Systemic pattern detected
 Automatic recovery is paused
             ↓
 Cases are escalated for investigation
+
+```
+
+### Recovery scoring
+
+The recovery decision uses a weighted score rather than a black-box decision:
+```
+score =
+    w1 · success_rate
+  − w2 · attempts
+  + w3 · engagement
+  − w4 · time_elapsed
+```
+#### The score considers:
+
+historical recovery success
+number of previous attempts
+customer engagement
+time elapsed since the failure
+
+The score helps determine whether recovery is still worth pursuing, while the policy engine continues to enforce the hard stop conditions.
+
+---
+
+What's actually in this repo
+
+### Frontend
+
+React + Vite + Tailwind
+
+The merchant dashboard shows:
+
+revenue at risk
+recovered revenue
+open recovery cases
+recovery scores
+recommended actions
+systemic failure signals
+a live decision tape showing recovery decisions and reasons
+
+The frontend reads payment and audit data from the backend API.
+
+### Backend
+
+FastAPI + Python
+
+The backend exposes:
+```
+GET /api/payments — returns payment failure information, customer details, amounts, and statuses.
+GET /api/audit-logs — returns the recovery decisions and their reasons.
+GET /health — checks whether the recovery agent is running.
+```
+
+### Database
+
+The application stores payment and recovery information in a local database during development.
+
+---
+#### Architecture
+
+                    ┌─────────────────────┐
+                    │      Frontend       │
+                    │  React + Vite +     │
+                    │      Tailwind       │
+                    └──────────┬──────────┘
+                               │
+                               │ HTTP
+                               ↓
+                    ┌─────────────────────┐
+                    │       FastAPI       │
+                    │        API          │
+                    └──────────┬──────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              ↓                ↓                ↓
+       Payment Events    Recovery Logic    Audit Logs
+              │                │                │
+              └────────────────┼────────────────┘
+                               ↓
+                         Policy Engine
+                               │
+                    ┌──────────┴──────────┐
+                    ↓                     ↓
+                 Allowed                Blocked
+                    ↓                     ↓
+             Recovery Action       Stop / Escalate
+
+
+### Running locally
+1. Clone the repository
+git clone <YOUR_REPOSITORY_URL>
+2. Backend setup
+   
+Create and activate a virtual environment:
+
+python -m venv .venv
+
+Windows PowerShell:
+
+.\.venv\Scripts\Activate.ps1
+
+### Install dependencies:
+
+pip install -r requirements.txt
+
+Start the FastAPI backend:
+
+uvicorn app.main:app --reload
+
+The backend runs on:
+
+http://localhost:8000
+
+Health check:
+
+http://localhost:8000/health
+
+3. Frontend setup
+
+Open another terminal:
+
+cd frontend
+npm install
+npm run dev
+
+The Vite development server runs on:
+
+http://localhost:5173
+
+The frontend connects to the backend through the configured API URL.
+
+---
+
+### What we left out on purpose
+We don't let AI invent arbitrary recovery actions.
+We don't use AI to classify structured payment failure codes.
+We don't allow unlimited payment attempts.
+We don't allow AI recommendations to bypass policy rules.
+We don't automatically continue recovery when a systemic failure pattern is detected.
+
+The focus is controlled recovery rather than blindly maximizing retries.
+
+---
+### What we'd add next
+Real payment gateway webhook integration.
+Live detection of payment-method or bank-wide failure spikes.
+More customer engagement signals.
+Real recovery action execution through a payment provider.
+Stronger idempotency and distributed locking for production workloads.
+More detailed merchant analytics and recovery metrics.
+
+#### Built for Razorpay Buildathon — Track 03: AI Revenue Recovery
