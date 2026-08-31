@@ -1,0 +1,30 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  --ink: #0B0E14;
+  --surface: #131822;
+  --surface-raised: #1A2130;
+  --line: #242B3A;
+  --gold: #C9A227;
+  --rust: #D2543E;
+  --teal: #3FA796;
+  --paper: #EDEAE3;
+  --muted: #7D8290;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Ledger/receipt monospace treatment for IDs, amounts, and scores */
+.font-ledger {
+  font-family: 'IBM Plex Mono', monospace;
+}
