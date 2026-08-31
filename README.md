@@ -194,7 +194,10 @@ The application stores payment and recovery information in a local database duri
 
 ### Running locally
 1. Clone the repository
+   
+```
 git clone <YOUR_REPOSITORY_URL>
+```
 2. Backend setup
    
 Create and activate a virtual environment:
@@ -255,4 +258,5 @@ Real recovery action execution through a payment provider.
 Stronger idempotency and distributed locking for production workloads.
 More detailed merchant analytics and recovery metrics.
 
+---
 #### Built for Razorpay Buildathon — Track 03: AI Revenue Recovery
