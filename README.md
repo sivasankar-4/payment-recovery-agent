@@ -32,6 +32,14 @@ The recovery agent follows a decision flow:
 7. Run the recommendation through hard policy rules.
 8. Log the decision and continue or stop based on the result.
 
+---
+
+### screenshots
+
+<img width="1885" height="887" alt="Screenshot 2026-08-31 192013" src="https://github.com/user-attachments/assets/41bae820-62d1-4641-a8af-bbdc7f3708eb" />
+
+---
+
 ### Where we use AI, and where we don't
 
 We're not using AI everywhere, on purpose.
